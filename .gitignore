@@ -3,3 +3,5 @@ config.yaml
 __pycache__/
 .env
 venv/
+rust-cli/target/
+rust-cli/config.yaml
