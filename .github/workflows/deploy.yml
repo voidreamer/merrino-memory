@@ -18,12 +18,7 @@ jobs:
         run: pip install -r requirements.txt
       - name: Test imports
         run: |
-          python -c "from cli.config import Config; print('Config OK')"
-          python -c "
-          import sys; sys.path.insert(0, '.')
-          from cli.config import Config
-          print('CLI imports OK')
-          "
+          python -c "from cli.config import load_config; print('Config OK')"
 
   test-rust:
     runs-on: ubuntu-latest
