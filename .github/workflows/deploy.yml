@@ -1,0 +1,73 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, staging]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+      - name: Test imports
+        run: |
+          cd backend
+          python -c "from app.main import app; print('OK')"
+          python -c "from app.chunker import chunk_text; assert len(chunk_text('hello world')) == 1; print('Chunker OK')"
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Set environment
+        id: env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+          else
+            echo "env=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Lambda package
+        run: |
+          cd backend
+          pip install -r requirements.txt -t package/
+          cp -r app package/
+          cd package && zip -r ../../infra/lambda.zip . -x '*.pyc' '__pycache__/*'
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -backend-config="key=${{ steps.env.outputs.env }}/terraform.tfstate"
+
+      - name: Terraform Apply
+        working-directory: infra
+        run: |
+          terraform apply -auto-approve \
+            -var="environment=${{ steps.env.outputs.env }}" \
+            -var="database_url=${{ secrets.DATABASE_URL }}"
+
+      - name: Update Lambda code
+        run: |
+          aws lambda update-function-code \
+            --function-name merrino-memory-api-${{ steps.env.outputs.env }} \
+            --zip-file fileb://infra/lambda.zip
