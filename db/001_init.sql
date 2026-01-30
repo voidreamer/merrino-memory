@@ -1,26 +1,30 @@
--- Merrino Memory schema initialization
-create schema if not exists merrino_memory;
+-- Agent Memory schema initialization
+CREATE SCHEMA IF NOT EXISTS agent_memory;
 
 -- Enable pgvector
-create extension if not exists vector;
+CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Memory chunks with embeddings
-create table merrino_memory.chunks (
-    id uuid default gen_random_uuid() primary key,
-    content text not null,
-    source text not null,
-    source_path text,
-    source_date date,
-    importance text default 'normal',
-    tags text[] default '{}',
-    embedding vector(768),          -- 768 dims for nomic-embed-text via Ollama
-    created_at timestamptz default now(),
-    updated_at timestamptz default now()
+CREATE TABLE agent_memory.chunks (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    agent_id TEXT NOT NULL DEFAULT 'default',
+    content TEXT NOT NULL,
+    source TEXT NOT NULL,
+    source_path TEXT,
+    source_date DATE,
+    importance TEXT DEFAULT 'normal',
+    tags TEXT[] DEFAULT '{}',
+    embedding vector(768),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Indexes
+CREATE INDEX idx_chunks_agent_id ON agent_memory.chunks(agent_id);
+CREATE INDEX idx_chunks_source ON agent_memory.chunks(source);
+CREATE INDEX idx_chunks_source_date ON agent_memory.chunks(source_date);
+CREATE INDEX idx_chunks_importance ON agent_memory.chunks(importance);
+
 -- IVFFlat index — create after inserting data (needs rows to build lists)
--- create index idx_chunks_embedding on merrino_memory.chunks
---     using ivfflat (embedding vector_cosine_ops) with (lists = 100);
-create index idx_chunks_source on merrino_memory.chunks(source);
-create index idx_chunks_source_date on merrino_memory.chunks(source_date);
-create index idx_chunks_importance on merrino_memory.chunks(importance);
+-- CREATE INDEX idx_chunks_embedding ON agent_memory.chunks
+--     USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);

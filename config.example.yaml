@@ -1,0 +1,16 @@
+agent_id: my-agent
+db_url: postgresql://user:password@localhost:5432/mydb
+ollama_url: http://localhost:11434/api/embeddings
+model: nomic-embed-text
+schema: agent_memory
+
+sources:
+  - path: /path/to/memory
+    type: markdown_dir
+
+  - path: /path/to/MEMORY.md
+    type: single_file
+    source_label: memory_md
+
+  - path: /path/to/sessions
+    type: transcript_dir

@@ -1,8 +1,5 @@
-__pycache__/
+config.yaml
 *.pyc
-.venv/
-*.egg-info/
-.terraform/
-*.tfstate*
-*.zip
+__pycache__/
 .env
+venv/
