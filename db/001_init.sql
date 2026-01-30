@@ -13,13 +13,14 @@ create table merrino_memory.chunks (
     source_date date,
     importance text default 'normal',
     tags text[] default '{}',
-    embedding vector(384),
+    embedding vector(768),          -- 768 dims for nomic-embed-text via Ollama
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
 
-create index idx_chunks_embedding on merrino_memory.chunks
-    using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+-- IVFFlat index — create after inserting data (needs rows to build lists)
+-- create index idx_chunks_embedding on merrino_memory.chunks
+--     using ivfflat (embedding vector_cosine_ops) with (lists = 100);
 create index idx_chunks_source on merrino_memory.chunks(source);
 create index idx_chunks_source_date on merrino_memory.chunks(source_date);
 create index idx_chunks_importance on merrino_memory.chunks(importance);
