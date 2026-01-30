@@ -1,5 +1,7 @@
+mod chunk;
 mod config;
 mod embed;
+mod index;
 mod search;
 
 use anyhow::Result;
@@ -31,6 +33,10 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Full re-index of all configured sources
+    Index,
+    /// Incremental index (only new/modified files)
+    IndexIncremental,
     /// Show health/stats
     Health,
 }
@@ -44,6 +50,14 @@ async fn main() -> Result<()> {
         Commands::Search { query, top, json } => {
             search::search(&cfg, &query, top, json).await?;
         }
+        Commands::Index => {
+            println!("🐑⚡ Full index for agent '{}'...\n", cfg.agent_id);
+            index::run_full_index(&cfg).await?;
+        }
+        Commands::IndexIncremental => {
+            println!("🐑⚡ Incremental index for agent '{}'...\n", cfg.agent_id);
+            index::run_incremental_index(&cfg).await?;
+        }
         Commands::Health => {
             health(&cfg).await?;
         }
@@ -53,7 +67,8 @@ async fn main() -> Result<()> {
 }
 
 async fn health(config: &config::Config) -> Result<()> {
-    let (client, connection) = tokio_postgres::connect(&config.db_url, tokio_postgres::NoTls).await?;
+    let (client, connection) =
+        tokio_postgres::connect(&config.db_url, tokio_postgres::NoTls).await?;
     tokio::spawn(async move {
         if let Err(e) = connection.await {
             eprintln!("DB connection error: {}", e);
@@ -66,7 +81,7 @@ async fn health(config: &config::Config) -> Result<()> {
             config.schema, config.agent_id
         ))
         .await?;
-    let count: &str = if let Some(tokio_postgres::SimpleQueryMessage::Row(row)) = msgs.first() {
+    let count = if let Some(tokio_postgres::SimpleQueryMessage::Row(row)) = msgs.first() {
         row.get(0).unwrap_or("0")
     } else {
         "0"
