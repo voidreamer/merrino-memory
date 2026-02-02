@@ -156,4 +156,3 @@ All scripts accept `--config <path>` to specify config file location.
 ## License
 
 MIT
-# Test commit from merrino sandbox 🐑
